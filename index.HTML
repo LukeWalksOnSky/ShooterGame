@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turret Defense</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #333;
+            border: 3px solid #444;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+        
+        #turret {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        
+        .turret-base {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #555;
+            border-radius: 50%;
+            border: 3px solid #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .turret-ring {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            top: 5px;
+            left: 5px;
+            border: 3px solid gold;
+            border-radius: 50%;
+            box-shadow: 0 0 5px gold;
+        }
+        
+        .turret-center {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 15px;
+            left: 15px;
+            background-color: #222;
+            border-radius: 50%;
+            border: 2px solid #444;
+        }
+        
+        .turret-cannon {
+            position: absolute;
+            width: 30px;
+            height: 10px;
+            top: 20px;
+            left: 25px;
+            background-color: #777;
+            border-radius: 5px;
+            transform-origin: left center;
+            z-index: 11;
+            box-shadow: 0 0 5px rgba(0,0,0,0.7);
+        }
+        
+        .zombie {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: yellow;
+            border-radius: 50%;
+        }
+        
+        .laser {
+            position: absolute;
+            width: 30px;
+            height: 4px;
+            background-color: red;
+            transform-origin: left center;
+            z-index: 9;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            z-index: 100;
+        }
+        
+        #upgrades {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .upgrade-btn {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .upgrade-btn:disabled {
+            background-color: #777;
+            cursor: not-allowed;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 36px;
+            z-index: 200;
+        }
+        
+        #restart-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #restart-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .power-active {
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+            to { box-shadow: 0 0 15px rgba(255,255,255,0.9); }
+        }
+        
+        .difficulty-increase {
+            animation: pulse-red 1s;
+        }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 5px rgba(255,0,0,0.5); }
+            50% { box-shadow: 0 0 20px rgba(255,0,0,0.9); }
+            100% { box-shadow: 0 0 5px rgba(255,0,0,0.5); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="turret">
+            <div class="turret-base"></div>
+            <div class="turret-ring"></div>
+            <div class="turret-center"></div>
+            <div class="turret-cannon"></div>
+        </div>
+        <div id="ui">
+            <div id="health">Turret HP: 10</div>
+            <div id="score">Score: 0</div>
+        </div>
+        <div id="upgrades">
+            <h3>Upgrades</h3>
+            <button id="damage-upgrade" class="upgrade-btn">Damage Upgrade (10 points)</button>
+            <button id="slow-zombies" class="upgrade-btn">Slow Zombies (30 points)</button>
+            <button id="laser-beam" class="upgrade-btn">Laser Beam (150 points)</button>
+        </div>
+        <div id="game-over">
+            GAME OVER
+            <button id="restart-btn">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        // Game elements
+        const gameContainer = document.getElementById('game-container');
+        const turret = document.getElementById('turret');
+        const healthDisplay = document.getElementById('health');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverScreen = document.getElementById('game-over');
+        const restartBtn = document.getElementById('restart-btn');
+        const damageUpgradeBtn = document.getElementById('damage-upgrade');
+        const slowZombiesBtn = document.getElementById('slow-zombies');
+        const laserBeamBtn = document.getElementById('laser-beam');
+
+        // Game state
+        let turretHP = 10;
+        let score = 0;
+        let gameOver = false;
+        let zombies = [];
+        let bullets = [];
+        let lasers = [];
+        let mouseX = gameContainer.clientWidth / 2;
+        let mouseY = gameContainer.clientHeight / 2;
+        let damageUpgradeCost = 10;
+        let bulletDamage = 3;
+        let zombieSlowActive = false;
+        let laserActive = false;
+        let difficultyIncreased = false;
+        let bossSpawned = false;
+        let massSpawnActive = false;
+        let lastShotTime = 0;
+        const laserShotInterval = 100; // ms between laser shots
+
+        // Zombie types
+        const zombieTypes = [
+            { color: 'green', baseHp: 5, baseDamage: 3, baseSpeed: 4, basePoints: 1 },
+            { color: 'red', baseHp: 10, baseDamage: 5, baseSpeed: 3, basePoints: 5 },
+            { color: 'blue', baseHp: 3, baseDamage: 1, baseSpeed: 5, basePoints: 3 },
+            { color: 'orange', baseHp: 50, baseDamage: 10, baseSpeed: 2, basePoints: 100 }
+        ];
+
+        // Update UI
+        function updateUI() {
+            healthDisplay.textContent = `Turret HP: ${turretHP}`;
+            scoreDisplay.textContent = `Score: ${score}`;
+            
+            // Update upgrade buttons
+            damageUpgradeBtn.textContent = `Damage Upgrade (${damageUpgradeCost} points)`;
+            damageUpgradeBtn.disabled = score < damageUpgradeCost;
+            slowZombiesBtn.disabled = score < 30;
+            laserBeamBtn.disabled = score < 150;
+            
+            // Check for difficulty increases
+            if (score >= 20 && !difficultyIncreased) {
+                difficultyIncreased = true;
+                gameContainer.classList.add('difficulty-increase');
+                setTimeout(() => gameContainer.classList.remove('difficulty-increase'), 1000);
+            }
+            
+            if (score >= 30 && !massSpawnActive) {
+                massSpawnActive = true;
+                gameContainer.classList.add('difficulty-increase');
+                setTimeout(() => gameContainer.classList.remove('difficulty-increase'), 1000);
+            }
+        }
+
+        // Turret rotation
+        document.addEventListener('mousemove', (e) => {
+            if (gameOver) return;
+            
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            const angle = Math.atan2(
+                mouseY - gameContainer.clientHeight / 2,
+                mouseX - gameContainer.clientWidth / 2
+            );
+            
+            // Rotate turret cannon
+            document.querySelector('.turret-cannon').style.transform = `rotate(${angle}rad)`;
+            
+            // Update laser angle if active
+            if (laserActive && lasers.length > 0) {
+                lasers[0].angle = angle;
+                lasers[0].element.style.transform = `rotate(${angle}rad)`;
+            }
+        });
+
+        // Shooting
+        document.addEventListener('click', (e) => {
+            if (gameOver || laserActive) return;
+            shootBullet();
+        });
+
+        // Shoot bullet
+        function shootBullet() {
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet';
+            gameContainer.appendChild(bullet);
+            
+            const angle = Math.atan2(
+                mouseY - gameContainer.clientHeight / 2,
+                mouseX - gameContainer.clientWidth / 2
+            );
+            
+            bullets.push({
+                element: bullet,
+                x: gameContainer.clientWidth / 2,
+                y: gameContainer.clientHeight / 2,
+                angle: angle,
+                speed: 15,
+                damage: bulletDamage
+            });
+        }
+
+        // Shoot laser
+        function shootLaser() {
+            if (lasers.length > 0) return;
+            
+            const laser = document.createElement('div');
+            laser.className = 'laser';
+            gameContainer.appendChild(laser);
+            
+            const angle = Math.atan2(
+                mouseY - gameContainer.clientHeight / 2,
+                mouseX - gameContainer.clientWidth / 2
+            );
+            
+            lasers.push({
+                element: laser,
+                angle: angle
+            });
+            
+            // Continuous laser shooting
+            const laserInterval = setInterval(() => {
+                if (!laserActive) {
+                    clearInterval(laserInterval);
+                    return;
+                }
+                
+                const now = Date.now();
+                if (now - lastShotTime >= laserShotInterval) {
+                    lastShotTime = now;
+                    const bullet = document.createElement('div');
+                    bullet.className = 'bullet';
+                    bullet.style.backgroundColor = 'red';
+                    gameContainer.appendChild(bullet);
+                    
+                    bullets.push({
+                        element: bullet,
+                        x: gameContainer.clientWidth / 2,
+                        y: gameContainer.clientHeight / 2,
+                        angle: angle,
+                        speed: 20,
+                        damage: bulletDamage
+                    });
+                }
+            }, laserShotInterval);
+        }
+
+        // Spawn zombies
+        function spawnZombie() {
+            if (gameOver) return;
+            
+            // Spawn multiple zombies after 30 points (1-2 at once)
+            let spawnCount = 1;
+            if (massSpawnActive) {
+                spawnCount = 1 + Math.floor(Math.random() * 2); // 1-2 zombies
+            }
+            
+            for (let i = 0; i < spawnCount; i++) {
+                let typeIndex = Math.floor(Math.random() * 3); // 0-2 (green, red, blue)
+                
+                // Spawn boss at 100 points if not already spawned
+                if (score >= 100 && !bossSpawned && Math.random() < 0.1) {
+                    typeIndex = 3; // Orange boss
+                    bossSpawned = true;
+                }
+                
+                const type = zombieTypes[typeIndex];
+                
+                // Apply difficulty scaling after 20 points
+                const hpMultiplier = difficultyIncreased ? 1.5 : 1;
+                const damageMultiplier = difficultyIncreased ? 1.5 : 1;
+                const speedMultiplier = zombieSlowActive ? 0.5 : (difficultyIncreased ? 1.2 : 1);
+                const pointsMultiplier = difficultyIncreased ? 1.5 : 1;
+                
+                const zombie = document.createElement('div');
+                zombie.className = 'zombie';
+                zombie.style.backgroundColor = type.color;
+                zombie.textContent = Math.floor(type.baseHp * hpMultiplier);
+                gameContainer.appendChild(zombie);
+                
+                // Spawn at random edge position
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                
+                switch (side) {
+                    case 0: // Top
+                        x = Math.random() * gameContainer.clientWidth;
+                        y = -30;
+                        break;
+                    case 1: // Right
+                        x = gameContainer.clientWidth + 30;
+                        y = Math.random() * gameContainer.clientHeight;
+                        break;
+                    case 2: // Bottom
+                        x = Math.random() * gameContainer.clientWidth;
+                        y = gameContainer.clientHeight + 30;
+                        break;
+                    case 3: // Left
+                        x = -30;
+                        y = Math.random() * gameContainer.clientHeight;
+                        break;
+                }
+                
+                zombies.push({
+                    element: zombie,
+                    x: x,
+                    y: y,
+                    hp: Math.floor(type.baseHp * hpMultiplier),
+                    damage: Math.floor(type.baseDamage * damageMultiplier),
+                    speed: type.baseSpeed * speedMultiplier,
+                    points: Math.floor(type.basePoints * pointsMultiplier),
+                    isBoss: typeIndex === 3
+                });
+            }
+        }
+
+        // Upgrade functions
+        damageUpgradeBtn.addEventListener('click', () => {
+            if (score >= damageUpgradeCost) {
+                score -= damageUpgradeCost;
+                bulletDamage = Math.floor(bulletDamage * 1.5);
+                damageUpgradeCost *= 2;
+                updateUI();
+                
+                // Visual feedback
+                turret.classList.add('power-active');
+                setTimeout(() => turret.classList.remove('power-active'), 500);
+            }
+        });
+
+        slowZombiesBtn.addEventListener('click', () => {
+            if (score >= 30) {
+                score -= 30;
+                updateUI();
+                zombieSlowActive = true;
+                
+                // Visual feedback
+                gameContainer.classList.add('power-active');
+                
+                // Reset after 10 seconds
+                setTimeout(() => {
+                    zombieSlowActive = false;
+                    gameContainer.classList.remove('power-active');
+                }, 10000);
+            }
+        });
+
+        laserBeamBtn.addEventListener('click', () => {
+            if (score >= 150) {
+                score -= 150;
+                updateUI();
+                laserActive = true;
+                
+                // Start shooting laser
+                shootLaser();
+                
+                // Visual feedback
+                turret.classList.add('power-active');
+                
+                // Reset after 5 seconds
+                setTimeout(() => {
+                    laserActive = false;
+                    if (lasers.length > 0) {
+                        lasers[0].element.remove();
+                        lasers = [];
+                    }
+                    turret.classList.remove('power-active');
+                }, 5000);
+            }
+        });
+
+        // Game over
+        function endGame() {
+            gameOver = true;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // Restart game
+        function restartGame() {
+            // Clear all game elements
+            zombies.forEach(zombie => zombie.element.remove());
+            bullets.forEach(bullet => bullet.element.remove());
+            lasers.forEach(laser => laser.element.remove());
+            
+            // Reset game state
+            turretHP = 10;
+            score = 0;
+            gameOver = false;
+            zombies = [];
+            bullets = [];
+            lasers = [];
+            bulletDamage = 3;
+            damageUpgradeCost = 10;
+            zombieSlowActive = false;
+            laserActive = false;
+            difficultyIncreased = false;
+            bossSpawned = false;
+            massSpawnActive = false;
+            
+            // Update UI
+            updateUI();
+            
+            // Hide game over screen
+            gameOverScreen.style.display = 'none';
+            
+            // Restart game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameOver) return;
+            
+            // Move zombies
+            zombies.forEach((zombie, zIndex) => {
+                // Calculate direction to turret
+                const dx = gameContainer.clientWidth / 2 - zombie.x;
+                const dy = gameContainer.clientHeight / 2 - zombie.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Move zombie
+                zombie.x += (dx / distance) * zombie.speed;
+                zombie.y += (dy / distance) * zombie.speed;
+                
+                // Update position
+                zombie.element.style.left = `${zombie.x}px`;
+                zombie.element.style.top = `${zombie.y}px`;
+                
+                // Check collision with turret
+                if (distance < 20) {
+                    // Damage turret
+                    turretHP -= zombie.damage;
+                    updateUI();
+                    
+                    // Remove zombie (unless it's the boss)
+                    if (!zombie.isBoss) {
+                        zombie.element.remove();
+                        zombies.splice(zIndex, 1);
+                    }
+                    
+                    // Check if game over
+                    if (turretHP <= 0) {
+                        turretHP = 0;
+                        updateUI();
+                        endGame();
+                    }
+                }
+            });
+            
+            // Move bullets
+            bullets.forEach((bullet, bIndex) => {
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                
+                bullet.element.style.left = `${bullet.x}px`;
+                bullet.element.style.top = `${bullet.y}px`;
+                
+                // Check collision with zombies
+                zombies.forEach((zombie, zIndex) => {
+                    const dx = bullet.x - zombie.x;
+                    const dy = bullet.y - zombie.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 20) {
+                        // Damage zombie
+                        zombie.hp -= bullet.damage;
+                        zombie.element.textContent = zombie.hp;
+                        
+                        // Check if zombie died
+                        if (zombie.hp <= 0) {
+                            // Add points
+                            score += zombie.points;
+                            updateUI();
+                            
+                            // Remove zombie
+                            zombie.element.remove();
+                            zombies.splice(zIndex, 1);
+                            
+                            // If boss was killed, allow new boss to spawn
+                            if (zombie.isBoss) {
+                                bossSpawned = false;
+                            }
+                        }
+                        
+                        // Remove bullet
+                        bullet.element.remove();
+                        bullets.splice(bIndex, 1);
+                    }
+                });
+                
+                // Remove bullets that go off-screen
+                if (bullet.x < 0 || bullet.x > gameContainer.clientWidth || 
+                    bullet.y < 0 || bullet.y > gameContainer.clientHeight) {
+                    bullet.element.remove();
+                    bullets.splice(bIndex, 1);
+                }
+            });
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        restartBtn.addEventListener('click', restartGame);
+
+        // Start game
+        updateUI();
+        setInterval(spawnZombie, 2000); // Spawn zombie every 2 seconds
+        gameLoop();
+    </script>
+</body>
+</html>
